@@ -1,33 +1,33 @@
-import 'package:flutter/material.dart';
 import 'dart:math';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:pypo/models/saving_goal.dart';
 
 class BoostSimulatorPage extends StatefulWidget {
-  final SavingGoal goal;
-
-  const BoostSimulatorPage({super.key, required this.goal});
+  const BoostSimulatorPage({super.key});
 
   @override
-  State<BoostSimulatorPage> createState() => _BoostSimulatorPageState();
+  BoostSimulatorPageState createState() => BoostSimulatorPageState();
 }
 
-class _BoostSimulatorPageState extends State<BoostSimulatorPage> {
-  final _boostController = TextEditingController();
-  final _returnController = TextEditingController();
-  final _yearsController = TextEditingController();
-
-  double? result;
+class BoostSimulatorPageState extends State<BoostSimulatorPage> {
+  final TextEditingController _amountController = TextEditingController();
+  final TextEditingController _targetController = TextEditingController();
+  double _growthRate = 5.0;
+  double _resultAmount = 0.0;
+  final int _years = 1;
 
   void _calculateBoost() {
-    final nominal = double.tryParse(_boostController.text);
-    final returnRate = double.tryParse(_returnController.text);
-    final years = double.tryParse(_yearsController.text);
+    double initialAmount = double.tryParse(_amountController.text) ?? 0;
+    double targetAmount = double.tryParse(_targetController.text) ?? 0;
 
-    if (nominal != null && returnRate != null && years != null) {
-      final futureValue = nominal * pow((1 + returnRate / 100), years);
+    if (initialAmount > 0 && targetAmount > 0) {
+      double futureValue = initialAmount * pow(1 + (_growthRate / 100), _years);
       setState(() {
-        result = futureValue;
+        _resultAmount = futureValue;
+      });
+    } else {
+      setState(() {
+        _resultAmount = 0.0;
       });
     }
   }
@@ -35,107 +35,91 @@ class _BoostSimulatorPageState extends State<BoostSimulatorPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        title: Text(
-          'Boost: ${widget.goal.title}',
-          style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, color: Colors.white),
-        ),
         backgroundColor: const Color(0xFF624E88),
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back,
-            color: Colors.white,
-            size: 30,
+        title: Text(
+          "Simulasi Investasi",
+          style: GoogleFonts.baloo2(
+            textStyle: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 25,
+              letterSpacing: 1.2,
+              color: Colors.white,
+            ),
           ),
-          onPressed: () {
-            // Menambahkan efek tombol kembali yang lucu
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('👋 Kembali ke Goal!')),
-            );
-            Navigator.pop(context);
-          },
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(), // menutup keyboard saat tap luar
         child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '🎯 Tujuan: ${widget.goal.title}',
-                style: GoogleFonts.baloo2(fontWeight: FontWeight.bold, fontSize: 20),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Terkumpul: Rp ${widget.goal.savedAmount.toStringAsFixed(0)} / Rp ${widget.goal.targetAmount.toStringAsFixed(0)}',
-                style: const TextStyle(color: Colors.black54),
-              ),
-              const Divider(height: 24),
-              TextField(
-                controller: _boostController,
-                decoration: InputDecoration(
-                  labelText: 'Nominal Investasi (Rp) 💰',
-                  border: OutlineInputBorder(),
-                  labelStyle: GoogleFonts.baloo2(),
-                ),
-                keyboardType: TextInputType.number,
-                style: GoogleFonts.baloo2(),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _returnController,
-                decoration: InputDecoration(
-                  labelText: 'Return per Tahun (%) 📈',
-                  border: OutlineInputBorder(),
-                  labelStyle: GoogleFonts.baloo2(),
-                ),
-                keyboardType: TextInputType.number,
-                style: GoogleFonts.baloo2(),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _yearsController,
-                decoration: InputDecoration(
-                  labelText: 'Durasi (Tahun) ⏳',
-                  border: OutlineInputBorder(),
-                  labelStyle: GoogleFonts.baloo2(),
-                ),
-                keyboardType: TextInputType.number,
-                style: GoogleFonts.baloo2(),
+                "Masukkan jumlah uang yang ingin diinvestasikan dan target yang ingin dicapai:",
+                style: Theme.of(context).textTheme.bodyLarge,
               ),
               const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: _calculateBoost,
-                icon: const Icon(Icons.flash_on, color: Colors.yellow),
-                label: Text(
-                  'Hitung 🚀',
-                  style: GoogleFonts.baloo2(color: Colors.white),
+              TextField(
+                controller: _amountController,
+                decoration: const InputDecoration(
+                  labelText: "Jumlah Investasi (Rp)",
+                  border: OutlineInputBorder(),
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF624E88), // Ubah jadi ungu
-                  padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 20.0),
-                  textStyle: GoogleFonts.baloo2(fontWeight: FontWeight.bold),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _targetController,
+                decoration: const InputDecoration(
+                  labelText: "Jumlah Target (Rp)",
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                "Tingkat Pertumbuhan Per Tahun (%)",
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+              Slider(
+                value: _growthRate,
+                min: 0,
+                max: 20,
+                divisions: 20,
+                label: _growthRate.toStringAsFixed(1),
+                onChanged: (value) {
+                  setState(() {
+                    _growthRate = value;
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+              Text(
+                "Perkiraan Hasil Investasi setelah $_years tahun:",
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+              Text(
+                "Rp ${_resultAmount.toStringAsFixed(0)}",
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 24,
+                  color: Colors.green,
                 ),
               ),
-              const SizedBox(height: 20),
-              if (result != null)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      "Hasil Simulasi: 🎉",
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      "Rp ${result!.toStringAsFixed(0)} 💸",
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text("✨ Lumayan buat percepat impianmu!"),
-                  ],
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _calculateBoost,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF624E88),
                 ),
+                child: const Text(
+                  "Hitung Simulasi",
+                  style: TextStyle(color: Colors.white),
+                ),
+              )
             ],
           ),
         ),

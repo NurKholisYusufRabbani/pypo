@@ -15,19 +15,19 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final Box<SavingGoal> _goalBox = Hive.box<SavingGoal>('goals');
+  late final Box<SavingGoal> _goalBox;
 
   @override
   void initState() {
     super.initState();
+    _goalBox = Hive.box<SavingGoal>('goals');
     _checkShowEducation();
   }
 
   void _checkShowEducation() async {
     final appBox = Hive.box('app');
     final hasShownEdu = appBox.get('shownEducation') ?? false;
-    final goals = Hive.box<SavingGoal>('goals');
-    final isAllZero = goals.values.every((g) => g.savedAmount == 0);
+    final isAllZero = _goalBox.values.every((g) => g.savedAmount == 0);
 
     if (!hasShownEdu && isAllZero) {
       await Future.delayed(const Duration(milliseconds: 500));
@@ -53,30 +53,6 @@ class _HomePageState extends State<HomePage> {
         ),
       );
     }
-  }
-
-  void _deleteGoal(SavingGoal goal) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Hapus Impian"),
-        content: Text("Yakin ingin menghapus '${goal.title}'?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Batal"),
-          ),
-          TextButton(
-            onPressed: () {
-              goal.delete(); // Hapus dari Hive
-              Navigator.pop(context);
-              setState(() {});
-            },
-            child: const Text("Hapus", style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -121,9 +97,9 @@ class _HomePageState extends State<HomePage> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: ValueListenableBuilder(
+        child: ValueListenableBuilder<Box<SavingGoal>>(
           valueListenable: _goalBox.listenable(),
-          builder: (context, Box<SavingGoal> goals, _) {
+          builder: (context, goals, _) {
             if (goals.isEmpty) {
               return Center(
                 child: Text(
@@ -140,87 +116,94 @@ class _HomePageState extends State<HomePage> {
             return ListView.builder(
               itemCount: goals.length,
               itemBuilder: (context, index) {
-                final goal = goals.getAt(index)!;
+                final goal = goals.getAt(index);
+                if (goal == null) return const SizedBox.shrink();
+
                 final progress =
                 (goal.savedAmount / goal.targetAmount).clamp(0.0, 1.0);
 
-                return Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
+                return Dismissible(
+                  key: Key(goal.key.toString()),
+                  direction: DismissDirection.endToStart,
+                  confirmDismiss: (direction) async {
+                    return await showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text("Hapus Impian"),
+                        content: Text("Yakin ingin menghapus '${goal.title}'?"),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            child: const Text("Batal"),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            child: const Text("Hapus", style: TextStyle(color: Colors.red)),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  onDismissed: (direction) async {
+                    await goal.delete();
+                  },
+                  background: Container(
+                    color: Colors.red,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    alignment: Alignment.centerRight,
+                    child: const Icon(Icons.delete, color: Colors.white),
                   ),
-                  margin: const EdgeInsets.only(bottom: 16),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    leading: goal.imagePath != null
-                        ? ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.file(
-                        File(goal.imagePath!),
-                        width: 60,
-                        height: 60,
-                        fit: BoxFit.cover,
-                      ),
-                    )
-                        : const Icon(Icons.image, size: 60),
-                    title: Text(
-                      goal.title,
-                      style: GoogleFonts.baloo2(
-                        textStyle: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
-                          color: Colors.black,
-                        ),
-                      ),
+                  child: Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
                     ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Terkumpul: Rp ${goal.savedAmount.toStringAsFixed(0)} / Rp ${goal.targetAmount.toStringAsFixed(0)}',
-                          style: const TextStyle(color: Colors.black54),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      leading: goal.imagePath != null && File(goal.imagePath!).existsSync()
+                          ? ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.file(
+                          File(goal.imagePath!),
+                          width: 60,
+                          height: 60,
+                          fit: BoxFit.cover,
                         ),
-                        const SizedBox(height: 6),
-                        LinearProgressIndicator(
-                          value: progress,
-                          backgroundColor: Colors.grey[300],
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            const Color(0xFF4CAF50),
+                      )
+                          : const Icon(Icons.image, size: 60),
+                      title: Text(
+                        goal.title,
+                        style: GoogleFonts.baloo2(
+                          textStyle: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                            color: Colors.black,
                           ),
                         ),
-                      ],
-                    ),
-                    trailing: PopupMenuButton<String>(
-                      onSelected: (value) {
-                        if (value == 'boost') {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  BoostSimulatorPage(goal: goal),
-                            ),
-                          );
-                        } else if (value == 'delete') {
-                          _deleteGoal(goal);
-                        }
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Terkumpul: Rp ${goal.savedAmount.toStringAsFixed(0)} / Rp ${goal.targetAmount.toStringAsFixed(0)}',
+                            style: const TextStyle(color: Colors.black54),
+                          ),
+                          const SizedBox(height: 6),
+                          LinearProgressIndicator(
+                            value: progress,
+                            backgroundColor: Colors.grey[300],
+                            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
+                          ),
+                        ],
+                      ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => DetailGoalPage(goal: goal)),
+                        );
                       },
-                      itemBuilder: (context) => [
-                        const PopupMenuItem(value: 'boost', child: Text('Boost')),
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: Text('Hapus', style: TextStyle(color: Colors.red)),
-                        ),
-                      ],
                     ),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => DetailGoalPage(goal: goal),
-                        ),
-                      );
-                    },
                   ),
                 );
               },
@@ -228,15 +211,32 @@ class _HomePageState extends State<HomePage> {
           },
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const AddGoalPage()),
-          );
-        },
-        backgroundColor: const Color(0xFF4CAF50),
-        child: const Icon(Icons.add),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const BoostSimulatorPage()),
+              );
+            },
+            backgroundColor: const Color(0xFF4CAF50),
+            child: const Icon(Icons.trending_up),
+          ),
+          const SizedBox(height: 16),
+          FloatingActionButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddGoalPage()),
+              );
+            },
+            backgroundColor: const Color(0xFF4CAF50),
+            child: const Icon(Icons.add),
+          ),
+        ],
       ),
     );
   }

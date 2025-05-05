@@ -74,15 +74,29 @@ class _AddGoalPageState extends State<AddGoalPage> {
     if (target != null) {
       final remaining = (target - (filling ?? 0)).clamp(0, target);
 
-      if (_frequency == 'Harian') {
-        _dailySaving = (remaining / 30).toInt();
+      // Hitung sisa waktu berdasarkan deadline
+      final remainingDays = _deadline != null ? _deadline!.difference(DateTime.now()).inDays : 0;
+
+      if (remainingDays <= 0) {
+        // Jika deadline sudah lewat atau tidak valid, set semua saran nabung menjadi "-"
+        setState(() {
+          _dailySaving = 0;
+          _monthlySaving = 0;
+          _yearlySaving = 0;
+        });
+        return;
+      }
+
+      // Perhitungan saran nabung sesuai frekuensi
+      if (_frequency == 'Harian' && remainingDays > 0) {
+        _dailySaving = (remaining / remainingDays).toInt();
         _monthlySaving = _dailySaving * 30;
         _yearlySaving = _dailySaving * 365;
-      } else if (_frequency == 'Bulanan') {
-        _monthlySaving = (remaining / 12).toInt();
+      } else if (_frequency == 'Bulanan' && remainingDays > 30) {
+        _monthlySaving = (remaining / (remainingDays / 30)).toInt();
         _dailySaving = (_monthlySaving / 30).toInt();
         _yearlySaving = _monthlySaving * 12;
-      } else if (_frequency == 'Tahunan') {
+      } else if (_frequency == 'Tahunan' && remainingDays > 365) {
         _yearlySaving = remaining.toInt();
         _monthlySaving = _yearlySaving ~/ 12;
         _dailySaving = _yearlySaving ~/ 365;
@@ -209,10 +223,21 @@ class _AddGoalPageState extends State<AddGoalPage> {
                 decoration: const InputDecoration(labelText: 'Frekuensi Nabung'),
               ),
               const SizedBox(height: 16),
-              Text('Estimasi Nabung:', style: const TextStyle(fontWeight: FontWeight.bold)),
-              Text('Harian: Rp $_dailySaving'),
-              Text('Bulanan: Rp $_monthlySaving'),
-              Text('Tahunan: Rp $_yearlySaving'),
+              Text('Saran Nabung:', style: const TextStyle(fontWeight: FontWeight.bold)),
+              if (_frequency == 'Harian') ...[
+                // Hanya tampilkan jika waktu cukup
+                Text('Harian: Rp $_dailySaving'),
+              ] else if (_frequency == 'Bulanan') ...[
+                if (_deadline != null && _deadline!.difference(DateTime.now()).inDays < 30)
+                  Text('Bulanan: -') // Menampilkan tanda "-" jika deadline terlalu dekat
+                else
+                  Text('Bulanan: Rp $_monthlySaving'),
+              ] else if (_frequency == 'Tahunan') ...[
+                if (_deadline != null && _deadline!.difference(DateTime.now()).inDays < 365)
+                  Text('Tahunan: -') // Menampilkan tanda "-" jika deadline terlalu dekat
+                else
+                  Text('Tahunan: Rp $_yearlySaving'),
+              ],
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _saveGoal,
