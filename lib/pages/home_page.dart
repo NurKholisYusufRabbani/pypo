@@ -1,8 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:pypo/models/saving_goal.dart';
+import 'package:pypo/services/notification_service.dart';
+import 'package:pypo/widgets/date_time_selector.dart';
 import 'add_goal_page.dart';
 import 'detail_goal_page.dart';
+import 'notification_page.dart';
 import 'boost_simulator_page.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -15,6 +18,51 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final NotificationService _notificationService = NotificationService();
+  DateTime selectedDate = DateTime.now(); // Always set to today's date
+  TimeOfDay selectedTime = TimeOfDay.now();
+
+  Future<void> _scheduleNotification() async {
+    final DateTime scheduledDateTime = DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+      selectedTime.hour,
+      selectedTime.minute,
+    );
+
+    if (scheduledDateTime.isBefore(DateTime.now())) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Please select a future date and time"),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+      return;
+    }
+
+    await _notificationService.scheduleNotification(scheduledDateTime);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Notification scheduled for ${scheduledDateTime.toString()}"),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
+  // Update only the time, but keep the date fixed to today
+  void _updateDateTime(DateTime date, TimeOfDay time) {
+    setState(() {
+      selectedDate = DateTime.now(); // Keep the date fixed to today
+      selectedTime = time;
+    });
+  }
+
   late final Box<SavingGoal> _goalBox;
 
   @override
@@ -215,26 +263,49 @@ class _HomePageState extends State<HomePage> {
         mainAxisAlignment: MainAxisAlignment.end,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          FloatingActionButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const BoostSimulatorPage()),
-              );
-            },
-            backgroundColor: const Color(0xFF4CAF50),
-            child: const Icon(Icons.trending_up),
+          Tooltip(
+            message: "Simulasi investasi (Boost)",
+            child: FloatingActionButton(
+              heroTag: "boostBtn",
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const BoostSimulatorPage()),
+                );
+              },
+              backgroundColor: const Color(0xFF4CAF50),
+              child: const Icon(Icons.trending_up),
+            ),
           ),
-          const SizedBox(height: 16),
-          FloatingActionButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const AddGoalPage()),
-              );
-            },
-            backgroundColor: const Color(0xFF4CAF50),
-            child: const Icon(Icons.add),
+          const SizedBox(height: 12),
+          Tooltip(
+            message: "Tambah Impian Baru",
+            child: FloatingActionButton(
+              heroTag: "addGoalBtn",
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AddGoalPage()),
+                );
+              },
+              backgroundColor: const Color(0xFF4CAF50),
+              child: const Icon(Icons.add),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Tooltip(
+            message: "Atur reminder",
+            child: FloatingActionButton(
+              heroTag: "notifBtn",
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const NotificationPage()),
+                );
+              },
+              backgroundColor: const Color(0xFF4CAF50),
+              child: const Icon(Icons.notifications),
+            ),
           ),
         ],
       ),
