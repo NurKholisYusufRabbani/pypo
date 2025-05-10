@@ -8,13 +8,29 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
   @override
   void initState() {
     super.initState();
-    // Delay 3 detik sebelum berpindah ke halaman HomePage
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+
+    _scaleAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.elasticOut,
+    );
+
+    _controller.forward();
+
     Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {  // Memastikan widget masih terpasang
+      if (mounted) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const HomePage()),
@@ -24,16 +40,21 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF624e88),
       body: Center(
-        child: AnimatedOpacity(
-          opacity: 1.0,
-          duration: const Duration(seconds: 2),  // Animasi fade-in
-          child: Image(
-            image: AssetImage('assets/images/PyPo_logo.png'),
-            width: 200,
+        child: ScaleTransition(
+          scale: _scaleAnimation,
+          child: Image.asset(
+            'assets/images/PyPo_logo.png',
+            width: 220,
           ),
         ),
       ),
