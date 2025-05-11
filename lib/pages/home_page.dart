@@ -17,58 +17,23 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin {
   final NotificationService _notificationService = NotificationService();
-  DateTime selectedDate = DateTime.now(); // Always set to today's date
+  DateTime selectedDate = DateTime.now();
   TimeOfDay selectedTime = TimeOfDay.now();
 
-  Future<void> _scheduleNotification() async {
-    final DateTime scheduledDateTime = DateTime(
-      selectedDate.year,
-      selectedDate.month,
-      selectedDate.day,
-      selectedTime.hour,
-      selectedTime.minute,
-    );
-
-    if (scheduledDateTime.isBefore(DateTime.now())) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Please select a future date and time"),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
-      return;
-    }
-
-    await _notificationService.scheduleNotification(scheduledDateTime);
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Notification scheduled for ${scheduledDateTime.toString()}"),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-    }
-  }
-
-  // Update only the time, but keep the date fixed to today
-  void _updateDateTime(DateTime date, TimeOfDay time) {
-    setState(() {
-      selectedDate = DateTime.now(); // Keep the date fixed to today
-      selectedTime = time;
-    });
-  }
-
   late final Box<SavingGoal> _goalBox;
+  bool isFabOpen = false;
+  late AnimationController _animationController;
 
   @override
   void initState() {
     super.initState();
     _goalBox = Hive.box<SavingGoal>('goals');
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    );
     _checkShowEducation();
   }
 
@@ -104,6 +69,19 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  void toggleFabMenu() {
+    setState(() {
+      isFabOpen = !isFabOpen;
+      isFabOpen ? _animationController.forward() : _animationController.reverse();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -129,7 +107,8 @@ class _HomePageState extends State<HomePage> {
                   title: const Text("Tentang PyPo"),
                   content: const Text(
                     "Aplikasi ini membantu kamu untuk mengatur impian dan menabung untuk mencapainya.\n\n"
-                        "Kamu bisa menggunakan fitur Boost untuk mempercepat pencapaian tujuanmu melalui simulasi investasi.",
+                        "Kamu bisa menggunakan fitur Boost untuk mengetahui percepatan pencapaian tujuanmu melalui simulasi investasi. \n\n"
+                    "Terakhir kamu juga dapat menambahkan notifikasi untuk mengingat kapan kamu untuk menabung",
                   ),
                   actions: [
                     TextButton(
@@ -263,39 +242,8 @@ class _HomePageState extends State<HomePage> {
         mainAxisAlignment: MainAxisAlignment.end,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Tooltip(
-            message: "Simulasi investasi (Boost)",
-            child: FloatingActionButton(
-              heroTag: "boostBtn",
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const BoostSimulatorPage()),
-                );
-              },
-              backgroundColor: const Color(0xFF4CAF50),
-              child: const Icon(Icons.trending_up),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Tooltip(
-            message: "Tambah Impian Baru",
-            child: FloatingActionButton(
-              heroTag: "addGoalBtn",
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const AddGoalPage()),
-                );
-              },
-              backgroundColor: const Color(0xFF4CAF50),
-              child: const Icon(Icons.add),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Tooltip(
-            message: "Atur reminder",
-            child: FloatingActionButton(
+          if (isFabOpen) ...[
+            FloatingActionButton(
               heroTag: "notifBtn",
               onPressed: () {
                 Navigator.push(
@@ -303,8 +251,45 @@ class _HomePageState extends State<HomePage> {
                   MaterialPageRoute(builder: (context) => const NotificationPage()),
                 );
               },
-              backgroundColor: const Color(0xFF4CAF50),
-              child: const Icon(Icons.notifications),
+              mini: true,
+              backgroundColor: const Color(0xFF624E88),
+              child: const Icon(Icons.notifications, color: Colors.white),
+            ),
+            const SizedBox(height: 8),
+            FloatingActionButton(
+              heroTag: "addGoalBtn",
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AddGoalPage()),
+                );
+              },
+              mini: true,
+              backgroundColor: const Color(0xFF624E88),
+              child: const Icon(Icons.add, color: Colors.white),
+            ),
+            const SizedBox(height: 8),
+            FloatingActionButton(
+              heroTag: "boostBtn",
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const BoostSimulatorPage()),
+                );
+              },
+              mini: true,
+              backgroundColor: const Color(0xFF624E88),
+              child: const Icon(Icons.trending_up, color: Colors.white),
+            ),
+            const SizedBox(height: 8),
+          ],
+          FloatingActionButton(
+            onPressed: toggleFabMenu,
+            backgroundColor: const Color(0xFF624E88),
+            child: AnimatedIcon(
+              icon: AnimatedIcons.menu_close,
+              color: Colors.white,
+              progress: _animationController,
             ),
           ),
         ],

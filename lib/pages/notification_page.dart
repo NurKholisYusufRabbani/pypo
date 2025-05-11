@@ -67,17 +67,17 @@ class _NotificationPageState extends State<NotificationPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5FA),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF624E88),
         title: Text(
-          "Pengaturan Notifikasi",
+          'Reminder Harian',
           style: GoogleFonts.baloo2(
-            textStyle: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
-              letterSpacing: 1.1,
-              color: Colors.white,
-            ),
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
           ),
+        ),
+        backgroundColor: const Color(0xFF624E88),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white, size: 30),
+          onPressed: () => Navigator.pop(context),
         ),
       ),
       body: Padding(
